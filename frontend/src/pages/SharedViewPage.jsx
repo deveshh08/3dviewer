@@ -7,13 +7,22 @@ import ProductInfo from '../components/ProductInfo'
 
 export default function SharedViewPage() {
   const { uuid } = useParams()
-  const { setColor, setLogoTexture, setLogoTransform, setProductData, productData } = useConfigurator()
+  const { setColor, setLogoTexture, setLogoZone, setDecalTransform, setProductData, productData } = useConfigurator()
 
   useEffect(() => {
     client.get(`/api/configs/${uuid}`).then(({ data }) => {
-      if (data.color)      setColor(data.color)
-      if (data.logo_url)   setLogoTexture(data.logo_url)
-      if (data.logo_pos)   setLogoTransform(data.logo_pos)
+      if (data.color)    setColor(data.color)
+      if (data.logo_url) setLogoTexture(data.logo_url)
+      if (data.logo_pos) {
+        const { zone, offsetX, offsetY, scale, rotate } = data.logo_pos
+        if (zone) setLogoZone(zone)
+        setDecalTransform({
+          offsetX: offsetX ?? 0,
+          offsetY: offsetY ?? 0,
+          scale:   scale   ?? 1.0,
+          rotate:  rotate  ?? 0,
+        })
+      }
       if (data.extra_data) setProductData(data.extra_data)
     })
   }, [uuid])

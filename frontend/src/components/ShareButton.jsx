@@ -5,7 +5,7 @@ import { useConfigurator } from '../store/configuratorStore'
 import { Link2, Copy, Check } from 'lucide-react'
 
 export default function ShareButton() {
-  const { selectedColor, logoTexture, logoTransform, productUrl, productData } = useConfigurator()
+  const { selectedColor, logoTexture, logoZone, decalTransform, productUrl, productData } = useConfigurator()
   const [shareUrl, setShareUrl] = useState('')
   const [copied, setCopied]   = useState(false)
   const [loading, setLoading] = useState(false)
@@ -17,7 +17,7 @@ export default function ShareButton() {
         product_url: productUrl,
         color:       selectedColor,
         logo_url:    logoTexture,
-        logo_pos:    logoTransform,
+        logo_pos:    { zone: logoZone, ...decalTransform },
         extra_data:  productData,
       })
       const url = `${window.location.origin}/share/${data.id}`
