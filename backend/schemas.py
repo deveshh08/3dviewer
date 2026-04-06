@@ -3,10 +3,10 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 class ConfigCreate(BaseModel):
-    product_url: str
+    product_url: Optional[str] = None
     color:       Optional[str] = None
     logo_url:    Optional[str] = None
-    logo_pos:    Optional[Dict[str, float]] = None
+    logo_pos:    Optional[Dict[str, Any]] = None
     extra_data:  Optional[Dict[str, Any]] = None
 
 class ConfigOut(ConfigCreate):

@@ -7,7 +7,7 @@ class ConfigSnapshot(Base):
     __tablename__ = "config_snapshots"
 
     id          = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_url = Column(String, nullable=False)
+    product_url = Column(String, nullable=True)
     color       = Column(String, nullable=True)
     logo_url    = Column(String, nullable=True)
     logo_pos    = Column(JSON,   nullable=True)
