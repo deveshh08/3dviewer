@@ -1,7 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 import os, uuid, io
 from PIL import Image
-from rembg import remove
 
 router = APIRouter()
 
@@ -23,6 +22,7 @@ async def upload_logo(file: UploadFile = File(...), request: Request = None):
     if file.content_type == "image/svg+xml":
         ext, output_bytes = "svg", raw
     else:
+        from rembg import remove
         img = Image.open(io.BytesIO(raw)).convert("RGBA")
         result = remove(img)                  # returns RGBA PIL image
         buf = io.BytesIO()
