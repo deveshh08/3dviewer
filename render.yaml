@@ -9,7 +9,7 @@ services:
       - key: DATABASE_URL
         value: sqlite:///./configurator.db
       - key: ALLOWED_ORIGINS
-        value: https://ipromo-3d-frontend.onrender.com
+        value: https://threedviewer-r6am.onrender.com
     disk:
       name: uploads
       mountPath: /app/static/uploads
@@ -23,7 +23,7 @@ services:
     staticPublishPath: ./frontend/dist
     envVars:
       - key: VITE_API_BASE
-        value: https://ipromo-3d-backend.onrender.com
+        value: https://threedviewer-backend-50ek.onrender.com
     routes:
       - type: rewrite
         source: /*

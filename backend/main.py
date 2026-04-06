@@ -9,15 +9,26 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="iPromo 3D Configurator API", version="1.0.0")
 
-origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+if raw_origins.strip() == "" or raw_origins.strip() == "*":
+    # Wildcard — allow all origins (dev mode or not yet configured)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,   # must be False when origins=["*"]
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # Explicit origins list — safe to use allow_credentials=True
+    origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 os.makedirs("static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
