@@ -5,11 +5,15 @@ import * as THREE from 'three'
 import { useConfigurator } from '../store/configuratorStore'
 import { useDecalLogo } from '../hooks/useDecalLogo'
 
-function SweatshirtModel() {
-  const { scene } = useGLTF('/models/quarter_zip.glb')
+function SweatshirtModel({ glbFile }) {
+  const { scene } = useGLTF(glbFile)
   const { selectedColor, logoTexture, logoZone, decalTransform } = useConfigurator()
-  const modelRef = useRef()
 
+  // Ensure logo URL is always absolute — old sessions may have stored a relative path
+  const BACKEND = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+  const absoluteLogoUrl = logoTexture
+    ? (logoTexture.startsWith('http') ? logoTexture : `${BACKEND}${logoTexture}`)
+    : null
   // Debug: log all mesh names once on load
   useEffect(() => {
     console.log('[Viewer3D] Meshes in GLB:')
@@ -34,12 +38,10 @@ function SweatshirtModel() {
     })
   }, [selectedColor, scene])
 
-  // Logo decal — pass modelRef so the hook can raycast against the mounted, world-transformed mesh
-  useDecalLogo(modelRef, logoTexture, logoZone, decalTransform)
+  useDecalLogo(scene, absoluteLogoUrl, logoZone, decalTransform)
 
   return (
     <primitive
-      ref={modelRef}
       object={scene}
       scale={1.4}
       position={[0, -1.0, 0]}
@@ -73,7 +75,7 @@ function CaptureHelper({ onRegisterCapture }) {
   return null
 }
 
-export default function Viewer3D({ canvasRef, onCapture, onRegisterCapture }) {
+export default function Viewer3D({ glbFile = '/models/quarter_zip.glb', canvasRef, onCapture, onRegisterCapture }) {
   const rendererRef = useRef()
   const [autoRotate, setAutoRotate] = useState(true)
 
@@ -96,7 +98,7 @@ export default function Viewer3D({ canvasRef, onCapture, onRegisterCapture }) {
         <Environment preset="studio" />
 
         <Suspense fallback={<Loader />}>
-          <SweatshirtModel />
+          <SweatshirtModel glbFile={glbFile} />
         </Suspense>
 
         <ContactShadows position={[0, -1.8, 0]} opacity={0.5} scale={6} blur={2.5} far={4} />
@@ -121,15 +123,7 @@ export default function Viewer3D({ canvasRef, onCapture, onRegisterCapture }) {
         </div>
       )}
 
-      <button
-        className="absolute bottom-4 right-4 bg-ipromo-navy text-white px-3 py-1.5 rounded-lg text-xs opacity-70 hover:opacity-100 transition-opacity"
-        onClick={() => {
-          const dataUrl = rendererRef.current?.domElement.toDataURL('image/png')
-          onCapture?.(dataUrl)
-        }}
-      >
-        📸 Capture
-      </button>
+
     </div>
   )
 }

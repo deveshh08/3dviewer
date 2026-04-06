@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export const useConfigurator = create((set) => ({
   productUrl:    '',
-  productData:   null,
+  productData:   null,   // includes glb_file, colors[], images[], pricing_tiers[]
   selectedColor: '#7ECECE',
   logoTexture:   null,
   logoZone:      'chest_left',
