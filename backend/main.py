@@ -30,7 +30,7 @@ else:
 
 # Always use absolute path so StaticFiles works regardless of launch directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+STATIC_DIR = os.getenv("DATA_DIR", os.path.join(BASE_DIR, "static"))
 os.makedirs(os.path.join(STATIC_DIR, "uploads"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

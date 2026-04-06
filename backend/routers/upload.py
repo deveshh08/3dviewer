@@ -6,7 +6,8 @@ router = APIRouter()
 # Resolve to backend/static/uploads — works regardless of uvicorn launch directory
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))          # .../backend/routers
 BACKEND_DIR = os.path.dirname(BASE_DIR)                           # .../backend
-UPLOAD_DIR  = os.path.join(BACKEND_DIR, "static", "uploads")
+DATA_DIR    = os.getenv("DATA_DIR", os.path.join(BACKEND_DIR, "static"))
+UPLOAD_DIR  = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/logo")
@@ -22,5 +23,7 @@ async def upload_logo(file: UploadFile = File(...), request: Request = None):
     async with aiofiles.open(path, "wb") as f:
         await f.write(await file.read())
 
-    base = str(request.base_url).rstrip("/")
-    return {"logo_url": f"{base}/static/uploads/{filename}"}
+    public_base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    if not public_base:
+        public_base = str(request.base_url).rstrip("/")
+    return {"logo_url": f"{public_base}/static/uploads/{filename}"}

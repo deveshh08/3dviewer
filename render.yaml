@@ -1,23 +1,27 @@
 services:
   # ── Backend (FastAPI) ──────────────────────────────────────────
   - type: web
-    name: ipromo-3d-backend
+    name: threedviewer-backend-50ek
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
-        value: sqlite:///./configurator.db
+        value: sqlite:////app/data/configurator.db
       - key: ALLOWED_ORIGINS
         value: https://threedviewer-r6am.onrender.com
+      - key: PUBLIC_BASE_URL
+        value: https://threedviewer-backend-50ek.onrender.com
+      - key: DATA_DIR
+        value: /app/data
     disk:
-      name: uploads
-      mountPath: /app/static/uploads
+      name: app-data
+      mountPath: /app/data
       sizeGB: 1
 
   # ── Frontend (Vite static site) ────────────────────────────────
   - type: web
-    name: ipromo-3d-frontend
+    name: threedviewer-r6am
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
