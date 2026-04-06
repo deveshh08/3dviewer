@@ -8,8 +8,12 @@ import { useDecalLogo } from '../hooks/useDecalLogo'
 function SweatshirtModel() {
   const { scene } = useGLTF('/models/quarter_zip.glb')
   const { selectedColor, logoTexture, logoZone, decalTransform } = useConfigurator()
-  const modelRef = useRef()
 
+  // Ensure logo URL is always absolute — old sessions may have stored a relative path
+  const BACKEND = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+  const absoluteLogoUrl = logoTexture
+    ? (logoTexture.startsWith('http') ? logoTexture : `${BACKEND}${logoTexture}`)
+    : null
   // Debug: log all mesh names once on load
   useEffect(() => {
     console.log('[Viewer3D] Meshes in GLB:')
@@ -34,12 +38,10 @@ function SweatshirtModel() {
     })
   }, [selectedColor, scene])
 
-  // Logo decal — pass modelRef so the hook can raycast against the mounted, world-transformed mesh
-  useDecalLogo(modelRef, logoTexture, logoZone, decalTransform)
+  useDecalLogo(scene, absoluteLogoUrl, logoZone, decalTransform)
 
   return (
     <primitive
-      ref={modelRef}
       object={scene}
       scale={1.4}
       position={[0, -1.0, 0]}

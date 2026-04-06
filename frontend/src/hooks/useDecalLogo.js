@@ -5,36 +5,25 @@ import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js'
 import { findBodyMesh, getZoneConfig } from '../utils/findMeshByMaterial'
 
 function prepareGeometry(mesh) {
-  // DecalGeometry requires:
-  //  1. Non-indexed geometry (toNonIndexed)
-  //  2. A 'normal' attribute
-  // We work on a clone so we never mutate the original mesh
   let geo = mesh.geometry.clone()
-
-  if (geo.index) {
-    geo = geo.toNonIndexed()
-  }
-
-  if (!geo.attributes.normal) {
-    geo.computeVertexNormals()
-  }
-
-  // Swap geometry on a temporary mesh for raycasting + DecalGeometry
-  const tmpMesh = new THREE.Mesh(geo, mesh.material)
-  tmpMesh.matrixWorld.copy(mesh.matrixWorld)
-  tmpMesh.matrixWorldNeedsUpdate = false
-  return tmpMesh
+  if (geo.index) geo = geo.toNonIndexed()
+  if (!geo.attributes.normal) geo.computeVertexNormals()
+  const tmp = new THREE.Mesh(geo, mesh.material)
+  tmp.matrixWorld.copy(mesh.matrixWorld)
+  tmp.matrixWorldNeedsUpdate = false
+  return tmp
 }
 
-export function useDecalLogo(modelRef, logoUrl, zone, transform) {
-  const { scene } = useThree()
+export function useDecalLogo(glbScene, logoUrl, zone, transform) {
+  // Add decal to the R3F root scene so world-space positions are correct
+  const { scene: rootScene } = useThree()
   const decalMeshRef = useRef(null)
   const textureRef   = useRef(null)
 
   useEffect(() => {
     // Cleanup previous decal
     if (decalMeshRef.current) {
-      scene.remove(decalMeshRef.current)
+      rootScene.remove(decalMeshRef.current)
       decalMeshRef.current.geometry.dispose()
       decalMeshRef.current.material.dispose()
       decalMeshRef.current = null
@@ -44,25 +33,25 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
       textureRef.current = null
     }
 
-    if (!logoUrl || !modelRef.current) return
+    if (!glbScene || !logoUrl) return
 
-    const root = modelRef.current
-    root.updateWorldMatrix(true, true)
+    // Force world matrices to be current before raycasting
+    glbScene.updateWorldMatrix(true, true)
 
-    const bodyMesh = findBodyMesh(root)
+    const bodyMesh = findBodyMesh(glbScene)
     if (!bodyMesh) {
-      console.warn('[DecalLogo] No body mesh found')
-      root.traverse(o => { if (o.isMesh) console.warn('  mesh:', o.name) })
+      console.warn('[DecalLogo] Could not find a body mesh in the GLB scene.')
       return
     }
 
-    // Prepare a decal-compatible version of the mesh
+    // Prepare geometry for DecalGeometry (non-indexed + normals)
     const decalReadyMesh = prepareGeometry(bodyMesh)
 
+    // Compute bounding box in world space
     const bbox   = new THREE.Box3().setFromObject(bodyMesh)
     const center = bbox.getCenter(new THREE.Vector3())
     const size   = bbox.getSize(new THREE.Vector3())
-    console.log('[DecalLogo] center:', center, 'size:', size)
+    console.log('[DecalLogo] center:', center, '| size:', size)
 
     const zoneConfig = getZoneConfig(zone)
 
@@ -83,7 +72,6 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
       zoneConfig.rayOrigin,
       zoneConfig.rayDirection.clone().normalize()
     )
-    // Raycast against the prepared mesh (non-indexed, has normals)
     const hits = raycaster.intersectObject(decalReadyMesh, false)
     console.log('[DecalLogo] Raycast hits:', hits.length, hits[0]?.point)
 
@@ -92,7 +80,7 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
       decalPosition = hits[0].point.clone()
       decalNormal   = hits[0].face.normal.clone().transformDirection(bodyMesh.matrixWorld)
     } else {
-      console.warn('[DecalLogo] Raycast missed — using fallback')
+      console.warn('[DecalLogo] Raycast missed — using fallback for zone:', zone)
       decalPosition = zoneConfig.fallback.clone()
       decalNormal   = zone === 'back_center'
         ? new THREE.Vector3(0, 0, -1)
@@ -110,9 +98,7 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
     const orientation = new THREE.Euler().setFromQuaternion(quaternion)
     orientation.z    += THREE.MathUtils.degToRad(transform.rotate)
 
-    const decalSize = new THREE.Vector3(1, 1, 1)
-      .setScalar(baseDecalScale)
-      .multiplyScalar(transform.scale)
+    const decalSize = new THREE.Vector3().setScalar(baseDecalScale * transform.scale)
 
     let geometry
     try {
@@ -122,8 +108,6 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
       decalReadyMesh.geometry.dispose()
       return
     }
-
-    // Dispose the temporary mesh geometry after DecalGeometry consumed it
     decalReadyMesh.geometry.dispose()
 
     const loader = new THREE.TextureLoader()
@@ -141,7 +125,7 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
           polygonOffset:       true,
           polygonOffsetFactor: -10,
           polygonOffsetUnits:  -10,
-          roughness:           0.8,
+          roughness:           0.85,
           metalness:           0.0,
           side:                THREE.FrontSide,
         })
@@ -149,7 +133,8 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
         const decalMesh = new THREE.Mesh(geometry, material)
         decalMesh.name        = 'LogoDecal'
         decalMesh.renderOrder = 999
-        scene.add(decalMesh)
+        // Add to ROOT scene — positions are in world space
+        rootScene.add(decalMesh)
         decalMeshRef.current = decalMesh
         console.log('[DecalLogo] ✅ Decal added at', decalPosition)
       },
@@ -159,7 +144,7 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
 
     return () => {
       if (decalMeshRef.current) {
-        scene.remove(decalMeshRef.current)
+        rootScene.remove(decalMeshRef.current)
         decalMeshRef.current.geometry.dispose()
         decalMeshRef.current.material.dispose()
         decalMeshRef.current = null
@@ -169,5 +154,5 @@ export function useDecalLogo(modelRef, logoUrl, zone, transform) {
         textureRef.current = null
       }
     }
-  }, [scene, logoUrl, zone, transform, modelRef])
+  }, [rootScene, glbScene, logoUrl, zone, transform])
 }
