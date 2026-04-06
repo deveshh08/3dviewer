@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import axios from 'axios'
+import client from '../api/client'
 import toast, { Toaster } from 'react-hot-toast'
 import Navbar from '../components/Navbar'
 import Viewer3D from '../components/Viewer3D'
@@ -25,7 +25,7 @@ export default function ConfiguratorPage() {
     setProductUrl(productUrl)
     setLoading(true)
 
-    axios.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
+    client.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
       .then(({ data }) => {
         setProductData(data)
         if (!data.glb_file) {
