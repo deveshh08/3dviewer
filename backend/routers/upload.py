@@ -1,6 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
-import os, uuid, io
-from PIL import Image
+import aiofiles, os, uuid
 
 router = APIRouter()
 
@@ -16,23 +15,12 @@ async def upload_logo(file: UploadFile = File(...), request: Request = None):
     if file.content_type not in allowed:
         raise HTTPException(400, "Only PNG, JPG, SVG allowed")
 
-    raw = await file.read()
-
-    # SVGs are kept as-is; raster images get background removed
-    if file.content_type == "image/svg+xml":
-        ext, output_bytes = "svg", raw
-    else:
-        from rembg import remove
-        img = Image.open(io.BytesIO(raw)).convert("RGBA")
-        result = remove(img)                  # returns RGBA PIL image
-        buf = io.BytesIO()
-        result.save(buf, format="PNG")
-        ext, output_bytes = "png", buf.getvalue()
-
+    ext = file.filename.rsplit(".", 1)[-1]
     filename = f"{uuid.uuid4()}.{ext}"
     path = os.path.join(UPLOAD_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(output_bytes)
+
+    async with aiofiles.open(path, "wb") as f:
+        await f.write(await file.read())
 
     public_base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
     if not public_base:

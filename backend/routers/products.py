@@ -6,6 +6,8 @@ from utils.category_mapper import get_glb_for_category
 
 router = APIRouter()
 
+_cache: dict = {}
+
 COLOR_CODE_MAP = {
     "AQ": {"name": "Aqua",     "hex": "#7ECECE"},
     "PK": {"name": "Pink",     "hex": "#F08080"},
@@ -139,4 +141,8 @@ async def scrape_product(url: str) -> dict:
 
 @router.get("/")
 async def get_product(url: str):
-    return await scrape_product(url)
+    if url in _cache:
+        return _cache[url]
+    result = await scrape_product(url)
+    _cache[url] = result
+    return result
