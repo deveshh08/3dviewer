@@ -46,3 +46,16 @@
 - Step 32: URL input bar added below Navbar in ConfiguratorPage — paste any iPromo URL, click "Load Product", navigates to /?url=... and reloads configurator with that product's data.
 
 ### Final build: ✅ 0 errors, 2161 modules, 12.26s
+
+## Phase 5 — Render Deployment ✅ COMPLETED
+
+- Created `backend/Dockerfile` for containerised FastAPI deployment.
+- Updated `backend/main.py` CORS to read `ALLOWED_ORIGINS` from env var (comma-separated).
+- Created `backend/.gitignore` (excludes venv/, *.db, .env, uploads).
+- Created `backend/static/uploads/.gitkeep` so empty folder is tracked by git.
+- Created `frontend/src/api/client.js` — axios instance using `VITE_API_BASE` env var (empty string in dev = uses Vite proxy, full URL in prod).
+- Replaced all direct `axios` imports with `client` in: LogoUploader, ShareButton, PDFDownloadButton, ConfiguratorPage, SharedViewPage.
+- Updated `vite.config.js` with `chunkSizeWarningLimit: 2000`.
+- Created root `.gitignore`.
+- Created `render.yaml` — defines both services: backend (Docker web service) + frontend (static site with SPA rewrite rule).
+- Final build: ✅ 0 errors, 2162 modules.

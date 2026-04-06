@@ -1,0 +1,30 @@
+services:
+  # ── Backend (FastAPI) ──────────────────────────────────────────
+  - type: web
+    name: ipromo-3d-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./configurator.db
+      - key: ALLOWED_ORIGINS
+        value: https://ipromo-3d-frontend.onrender.com
+    disk:
+      name: uploads
+      mountPath: /app/static/uploads
+      sizeGB: 1
+
+  # ── Frontend (Vite static site) ────────────────────────────────
+  - type: web
+    name: ipromo-3d-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    envVars:
+      - key: VITE_API_BASE
+        value: https://ipromo-3d-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

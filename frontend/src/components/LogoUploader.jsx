@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import axios from 'axios'
+import client from '../api/client'
 import toast from 'react-hot-toast'
 import { useConfigurator } from '../store/configuratorStore'
 import { Upload, X, Move } from 'lucide-react'
@@ -18,7 +18,7 @@ export default function LogoUploader() {
     try {
       const form = new FormData()
       form.append('file', file)
-      const { data } = await axios.post('/api/upload/logo', form)
+      const { data } = await client.post('/api/upload/logo', form)
       setLogoTexture(data.logo_url)
       toast.success('Logo applied to model!')
     } catch {

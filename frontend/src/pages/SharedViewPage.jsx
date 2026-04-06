@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import axios from 'axios'
+import client from '../api/client'
 import { useConfigurator } from '../store/configuratorStore'
 import Viewer3D from '../components/Viewer3D'
 import ProductInfo from '../components/ProductInfo'
@@ -10,7 +10,7 @@ export default function SharedViewPage() {
   const { setColor, setLogoTexture, setLogoTransform, setProductData, productData } = useConfigurator()
 
   useEffect(() => {
-    axios.get(`/api/configs/${uuid}`).then(({ data }) => {
+    client.get(`/api/configs/${uuid}`).then(({ data }) => {
       if (data.color)      setColor(data.color)
       if (data.logo_url)   setLogoTexture(data.logo_url)
       if (data.logo_pos)   setLogoTransform(data.logo_pos)

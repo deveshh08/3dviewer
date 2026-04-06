@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import client from '../api/client'
 import toast from 'react-hot-toast'
 import { useConfigurator } from '../store/configuratorStore'
 import { Link2, Copy, Check } from 'lucide-react'
@@ -13,7 +13,7 @@ export default function ShareButton() {
   const handleShare = async () => {
     setLoading(true)
     try {
-      const { data } = await axios.post('/api/configs/', {
+      const { data } = await client.post('/api/configs/', {
         product_url: productUrl,
         color:       selectedColor,
         logo_url:    logoTexture,

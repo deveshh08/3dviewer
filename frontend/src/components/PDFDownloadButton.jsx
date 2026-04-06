@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import client from '../api/client'
 import toast from 'react-hot-toast'
 import { useConfigurator } from '../store/configuratorStore'
 import { FileDown } from 'lucide-react'
@@ -22,7 +22,7 @@ export default function PDFDownloadButton({ canvasRef }) {
         snapshot = canvasRef.current.toDataURL('image/png')
       }
 
-      const { data } = await axios.post('/api/pdf/download', {
+      const { data } = await client.post('/api/pdf/download', {
         product_name: productData?.name    ?? 'Crosswind Quarter Zip Sweatshirt',
         item_no:      productData?.item_no ?? 'IP-276-9359',
         price:        productData?.price   ?? '$43.99 – $51.99',

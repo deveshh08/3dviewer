@@ -8,7 +8,7 @@ import ShareButton from '../components/ShareButton'
 import PDFDownloadButton from '../components/PDFDownloadButton'
 import ProductInfo from '../components/ProductInfo'
 import { useConfigurator } from '../store/configuratorStore'
-import axios from 'axios'
+import client from '../api/client'
 import toast, { Toaster } from 'react-hot-toast'
 
 export default function ConfiguratorPage() {
@@ -22,7 +22,7 @@ export default function ConfiguratorPage() {
   useEffect(() => {
     setProductUrl(productUrl)
     setUrlInput(productUrl)
-    axios.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
+    client.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
       .then(({ data }) => setProductData(data))
       .catch(() => toast.error('Could not load product data'))
   }, [productUrl])
