@@ -5,66 +5,6 @@ import toast from 'react-hot-toast'
 import { useConfigurator } from '../store/configuratorStore'
 import { Upload, X, RotateCcw } from 'lucide-react'
 
-// Removes background from an image File using Canvas flood-fill from corners
-function removeBackground(file) {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0)
-
-      const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const tolerance = 30
-
-      // Sample background color from the 4 corners
-      const corners = [
-        [0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]
-      ]
-      let bgR = 0, bgG = 0, bgB = 0
-      corners.forEach(([x, y]) => {
-        const i = (y * width + x) * 4
-        bgR += data[i]; bgG += data[i + 1]; bgB += data[i + 2]
-      })
-      bgR = Math.round(bgR / 4); bgG = Math.round(bgG / 4); bgB = Math.round(bgB / 4)
-
-      const colorMatch = (i) => {
-        return Math.abs(data[i] - bgR) < tolerance &&
-               Math.abs(data[i + 1] - bgG) < tolerance &&
-               Math.abs(data[i + 2] - bgB) < tolerance
-      }
-
-      // BFS flood fill from all 4 corners
-      const visited = new Uint8Array(width * height)
-      const queue = []
-      corners.forEach(([x, y]) => {
-        const idx = y * width + x
-        if (!visited[idx]) { visited[idx] = 1; queue.push(idx) }
-      })
-
-      while (queue.length) {
-        const idx = queue.pop()
-        const x = idx % width, y = Math.floor(idx / width)
-        const pi = idx * 4
-        if (!colorMatch(pi)) continue
-        data[pi + 3] = 0 // make transparent
-        for (const [nx, ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]) {
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            const ni = ny * width + nx
-            if (!visited[ni]) { visited[ni] = 1; queue.push(ni) }
-          }
-        }
-      }
-
-      ctx.putImageData(new ImageData(data, width, height), 0, 0)
-      canvas.toBlob(resolve, 'image/png')
-    }
-    img.src = URL.createObjectURL(file)
-  })
-}
-
 const ZONES = [
   { id: 'chest_left',  label: 'Left Chest',  icon: '◧' },
   { id: 'chest_right', label: 'Right Chest', icon: '◨' },
@@ -96,11 +36,8 @@ export default function LogoUploader() {
     setPreview(URL.createObjectURL(file))
     setUploading(true)
     try {
-      // Remove background client-side before uploading
-      const isSvg = file.type === 'image/svg+xml'
-      const uploadFile = isSvg ? file : await removeBackground(file)
       const form = new FormData()
-      form.append('file', uploadFile, isSvg ? file.name : 'logo.png')
+      form.append('file', file)
       const { data } = await client.post('/api/upload/logo', form)
       setLogoTexture(data.logo_url)
       toast.success('Logo applied! Rotate the model to see it.')
