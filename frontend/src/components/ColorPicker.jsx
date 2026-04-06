@@ -1,31 +1,27 @@
 import { useConfigurator } from '../store/configuratorStore'
 
-const COLOR_MAP = {
-  "Aqua":     "#7ECECE",
-  "Pink":     "#F08080",
-  "Tan":      "#C4A882",
-  "Black":    "#1A1A1A",
-  "Silver":   "#B0B0B0",
-  "White":    "#F5F5F5",
-  "Navy":     "#1B2A6B",
-  "Graphite": "#4A4A4A",
-  "Purple":   "#6A0DAD",
-  "Red":      "#CC2020",
-}
+const FALLBACK_COLORS = [
+  { name: "Black",    hex: "#1A1A1A" },
+  { name: "Navy",     hex: "#1B2A6B" },
+  { name: "White",    hex: "#F5F5F5" },
+  { name: "Graphite", hex: "#4A4A4A" },
+  { name: "Red",      hex: "#CC2020" },
+]
 
 export default function ColorPicker() {
-  const { selectedColor, setColor } = useConfigurator()
+  const { selectedColor, setColor, productData } = useConfigurator()
+  const colors = productData?.colors ?? FALLBACK_COLORS
+
+  const selectedName = colors.find(c => c.hex === selectedColor)?.name ?? ''
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
       <h3 className="text-sm font-semibold text-ipromo-navy mb-3">
         1. Choose Color
-        <span className="ml-2 text-ipromo-teal font-normal">
-          {Object.entries(COLOR_MAP).find(([, v]) => v === selectedColor)?.[0] ?? ''}
-        </span>
+        <span className="ml-2 text-ipromo-teal font-normal">{selectedName}</span>
       </h3>
       <div className="flex flex-wrap gap-2">
-        {Object.entries(COLOR_MAP).map(([name, hex]) => (
+        {colors.map(({ name, hex }) => (
           <button
             key={name}
             title={name}

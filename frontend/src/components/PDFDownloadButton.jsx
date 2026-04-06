@@ -10,7 +10,7 @@ const HEX_TO_NAME = {
   "#1B2A6B": "Navy", "#4A4A4A": "Graphite", "#6A0DAD": "Purple", "#CC2020": "Red"
 }
 
-export default function PDFDownloadButton({ canvasRef }) {
+export default function PDFDownloadButton({ captureRef }) {
   const { selectedColor, productData } = useConfigurator()
   const [loading, setLoading] = useState(false)
 
@@ -18,8 +18,10 @@ export default function PDFDownloadButton({ canvasRef }) {
     setLoading(true)
     try {
       let snapshot = null
-      if (canvasRef?.current) {
-        snapshot = canvasRef.current.toDataURL('image/png')
+      if (captureRef?.current) {
+        snapshot = typeof captureRef.current === 'function'
+          ? captureRef.current()
+          : captureRef.current.toDataURL?.('image/png')
       }
 
       const { data } = await client.post('/api/pdf/download', {
