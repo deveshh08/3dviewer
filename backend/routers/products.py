@@ -1,8 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import httpx
 from bs4 import BeautifulSoup
 import re
+from sqlalchemy.orm import Session
+from database import get_db
+from models import ProductImage, ProductGLB
 from utils.category_mapper import get_glb_for_category
+from utils.image_scraper import fetch_product_images
+from utils.tripo import generate_glb
 
 router = APIRouter()
 
@@ -146,3 +151,68 @@ async def get_product(url: str):
     result = await scrape_product(url)
     _cache[url] = result
     return result
+
+
+@router.post("/scrape-images")
+async def scrape_images(url: str, db: Session = Depends(get_db)):
+    """Fetch all product images via hybrid method and store them in the DB."""
+    # Return cached rows if already scraped
+    existing = db.query(ProductImage).filter(ProductImage.product_url == url).all()
+    if existing:
+        return {"source": "cache", "count": len(existing),
+                "images": [r.image_url for r in existing]}
+
+    images = await fetch_product_images(url)
+    if not images:
+        raise HTTPException(status_code=404, detail="No images found for this product URL")
+
+    rows = [
+        ProductImage(product_url=url, image_url=img_url, position=i)
+        for i, img_url in enumerate(images)
+    ]
+    db.add_all(rows)
+    db.commit()
+
+    return {"source": "scraped", "count": len(rows),
+            "images": [r.image_url for r in rows]}
+
+
+@router.post("/generate-3d")
+async def generate_3d(url: str, db: Session = Depends(get_db)):
+    """Generate a GLB model for a product URL using TripoAI. Cached by URL."""
+    # Return cached GLB if already generated
+    existing = db.query(ProductGLB).filter(ProductGLB.product_url == url).first()
+    if existing:
+        return {"source": "cache", "glb_url": existing.glb_url, "task_id": existing.task_id}
+
+    # Get stored images or scrape them now
+    rows = db.query(ProductImage).filter(ProductImage.product_url == url)\
+             .order_by(ProductImage.position).limit(3).all()
+    if not rows:
+        images = await fetch_product_images(url)
+        if not images:
+            raise HTTPException(status_code=404, detail="No images found for this product URL")
+        db.add_all([ProductImage(product_url=url, image_url=img, position=i)
+                    for i, img in enumerate(images)])
+        db.commit()
+        image_urls = images[:3]
+    else:
+        image_urls = [r.image_url for r in rows]
+
+    try:
+        glb_url, task_id = await generate_glb(image_urls)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"TripoAI error: {e}")
+
+    db.add(ProductGLB(product_url=url, glb_url=glb_url, task_id=task_id))
+    db.commit()
+
+    return {"source": "generated", "glb_url": glb_url, "task_id": task_id}
+
+
+
+def get_stored_images(url: str, db: Session = Depends(get_db)):
+    """Retrieve previously scraped images for a product URL."""
+    rows = db.query(ProductImage).filter(ProductImage.product_url == url)\
+               .order_by(ProductImage.position).all()
+    return {"count": len(rows), "images": [r.image_url for r in rows]}
