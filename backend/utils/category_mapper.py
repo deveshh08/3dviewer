@@ -23,11 +23,15 @@ CATEGORY_TO_GLB = [
 ]
 
 
+# Only GLB files that actually exist in frontend/public/models/
+AVAILABLE_GLBS = {"quarter_zip.glb"}
+
+
 def get_glb_for_category(url: str, breadcrumbs: list) -> str | None:
     search_text = (url + " " + " ".join(breadcrumbs)).lower()
     for keywords, glb_file in CATEGORY_TO_GLB:
         if any(kw in search_text for kw in keywords):
-            return glb_file
+            return glb_file if glb_file in AVAILABLE_GLBS else None
     return None
 
 

@@ -17,8 +17,10 @@ export default function ConfiguratorPage() {
   const productUrl = searchParams.get('url') ?? ''
   const [loading, setLoading] = useState(false)
   const [generatingGlb, setGeneratingGlb] = useState(false)
+  const [glbProgress, setGlbProgress] = useState(0)
   const [generatedGlbUrl, setGeneratedGlbUrl] = useState(null)
   const captureRef = useRef(null)
+  const pollRef = useRef(null)
 
   const { setProductData, setProductUrl, productData } = useConfigurator()
 
@@ -27,16 +29,54 @@ export default function ConfiguratorPage() {
     setProductUrl(productUrl)
     setLoading(true)
     setGeneratedGlbUrl(null)
+    setGlbProgress(0)
+    if (pollRef.current) clearInterval(pollRef.current)
 
     client.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
       .then(({ data }) => {
         setProductData(data)
         if (!data.glb_file) {
           setGeneratingGlb(true)
+          setGlbProgress(0)
           client.post(`/api/products/generate-3d?url=${encodeURIComponent(productUrl)}`)
-            .then(({ data: glbData }) => setGeneratedGlbUrl(glbData.glb_url))
-            .catch(() => toast.error('3D generation failed — showing photo preview'))
-            .finally(() => setGeneratingGlb(false))
+            .then(({ data: glbData }) => {
+              if (glbData.source === 'cache') {
+                // local static path, no proxy needed
+                setGeneratedGlbUrl(glbData.glb_url)
+                setGlbProgress(100)
+                setGeneratingGlb(false)
+                return
+              }
+              // poll for progress
+              const { task_id } = glbData
+              pollRef.current = setInterval(async () => {
+                try {
+                  const { data: prog } = await client.get(
+                    `/api/products/generation-progress?task_id=${task_id}&product_url=${encodeURIComponent(productUrl)}`
+                  )
+                  setGlbProgress(prog.progress ?? 0)
+                  if (prog.status === 'SUCCEEDED') {
+                    clearInterval(pollRef.current)
+                    setGlbProgress(100)
+                    // prog.glb_url is now a local /static path, no proxy needed
+                    setGeneratedGlbUrl(prog.glb_url)
+                    setGeneratingGlb(false)
+                  } else if (prog.status === 'FAILED') {
+                    clearInterval(pollRef.current)
+                    toast.error('3D generation failed — showing photo preview')
+                    setGeneratingGlb(false)
+                  }
+                } catch {
+                  clearInterval(pollRef.current)
+                  toast.error('3D generation failed — showing photo preview')
+                  setGeneratingGlb(false)
+                }
+              }, 3000)
+            })
+            .catch(() => {
+              toast.error('3D generation failed — showing photo preview')
+              setGeneratingGlb(false)
+            })
         }
       })
       .catch(() => toast.error('Could not load product — check the URL'))
@@ -70,7 +110,7 @@ export default function ConfiguratorPage() {
             if (glbFile) return (
               <Viewer3D glbFile={glbFile} onRegisterCapture={onRegisterCapture} />
             )
-            if (generatingGlb) return <ViewerSkeleton label="Generating 3D model with AI…" />
+            if (generatingGlb) return <GeneratingOverlay progress={glbProgress} />
             return <FlatViewer images={productData.images} onRegisterCapture={onRegisterCapture} />
           })()}
         </div>
@@ -186,6 +226,40 @@ function ViewerSkeleton({ label = 'Loading product…' }) {
   return (
     <div className="w-full h-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center">
       <p className="text-slate-400 text-sm">{label}</p>
+    </div>
+  )
+}
+
+function GeneratingOverlay({ progress }) {
+  return (
+    <div className="w-full h-full rounded-2xl bg-slate-900 flex flex-col items-center justify-center gap-5 px-10">
+      <div className="text-center">
+        <p className="text-white font-semibold text-base">Generating 3D Model</p>
+        <p className="text-slate-400 text-sm mt-1">AI is building your product in 3D…</p>
+      </div>
+
+      <div className="w-full">
+        <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+          <span>Progress</span>
+          <span>{progress}%</span>
+        </div>
+        <div className="w-full bg-slate-700 rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-teal-400 to-blue-500 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex gap-1.5">
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            className="w-2 h-2 rounded-full bg-teal-400 animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </div>
     </div>
   )
 }
