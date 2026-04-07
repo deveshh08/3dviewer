@@ -41,8 +41,8 @@ export default function ConfiguratorPage() {
           client.post(`/api/products/generate-3d?url=${encodeURIComponent(productUrl)}`)
             .then(({ data: glbData }) => {
               if (glbData.source === 'cache') {
-                // local static path, no proxy needed
-                setGeneratedGlbUrl(glbData.glb_url)
+                const base = import.meta.env.VITE_API_BASE ?? ''
+                setGeneratedGlbUrl(`${base}${glbData.glb_url}`)
                 setGlbProgress(100)
                 setGeneratingGlb(false)
                 return
@@ -58,8 +58,8 @@ export default function ConfiguratorPage() {
                   if (prog.status === 'SUCCEEDED') {
                     clearInterval(pollRef.current)
                     setGlbProgress(100)
-                    // prog.glb_url is now a local /static path, no proxy needed
-                    setGeneratedGlbUrl(prog.glb_url)
+                    const base = import.meta.env.VITE_API_BASE ?? ''
+                    setGeneratedGlbUrl(`${base}${prog.glb_url}`)
                     setGeneratingGlb(false)
                   } else if (prog.status === 'FAILED') {
                     clearInterval(pollRef.current)
