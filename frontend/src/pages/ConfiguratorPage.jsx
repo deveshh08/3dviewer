@@ -16,6 +16,8 @@ export default function ConfiguratorPage() {
   const [searchParams] = useSearchParams()
   const productUrl = searchParams.get('url') ?? ''
   const [loading, setLoading] = useState(false)
+  const [generatingGlb, setGeneratingGlb] = useState(false)
+  const [generatedGlbUrl, setGeneratedGlbUrl] = useState(null)
   const captureRef = useRef(null)
 
   const { setProductData, setProductUrl, productData } = useConfigurator()
@@ -24,15 +26,17 @@ export default function ConfiguratorPage() {
     if (!productUrl) return
     setProductUrl(productUrl)
     setLoading(true)
+    setGeneratedGlbUrl(null)
 
     client.get(`/api/products/?url=${encodeURIComponent(productUrl)}`)
       .then(({ data }) => {
         setProductData(data)
         if (!data.glb_file) {
-          toast('No 3D model for this category — showing photo preview', {
-            icon: '📸',
-            duration: 4000,
-          })
+          setGeneratingGlb(true)
+          client.post(`/api/products/generate-3d?url=${encodeURIComponent(productUrl)}`)
+            .then(({ data: glbData }) => setGeneratedGlbUrl(glbData.glb_url))
+            .catch(() => toast.error('3D generation failed — showing photo preview'))
+            .finally(() => setGeneratingGlb(false))
         }
       })
       .catch(() => toast.error('Could not load product — check the URL'))
@@ -56,19 +60,19 @@ export default function ConfiguratorPage() {
                        grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
 
         <div className="relative h-[520px] lg:h-auto lg:min-h-[580px]">
-          {loading && <ViewerSkeleton />}
+          {loading && <ViewerSkeleton label="Loading product…" />}
 
-          {!loading && productData && (
-            productData.glb_file
-              ? <Viewer3D
-                  glbFile={`/models/${productData.glb_file}`}
-                  onRegisterCapture={onRegisterCapture}
-                />
-              : <FlatViewer
-                  images={productData.images}
-                  onRegisterCapture={onRegisterCapture}
-                />
-          )}
+          {!loading && productData && (() => {
+            const glbFile = productData.glb_file
+              ? `/models/${productData.glb_file}`
+              : generatedGlbUrl || null
+
+            if (glbFile) return (
+              <Viewer3D glbFile={glbFile} onRegisterCapture={onRegisterCapture} />
+            )
+            if (generatingGlb) return <ViewerSkeleton label="Generating 3D model with AI…" />
+            return <FlatViewer images={productData.images} onRegisterCapture={onRegisterCapture} />
+          })()}
         </div>
 
         <aside className="flex flex-col gap-4">
@@ -178,10 +182,10 @@ function URLInputScreen() {
   )
 }
 
-function ViewerSkeleton() {
+function ViewerSkeleton({ label = 'Loading product…' }) {
   return (
     <div className="w-full h-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center">
-      <p className="text-slate-400 text-sm">Loading product…</p>
+      <p className="text-slate-400 text-sm">{label}</p>
     </div>
   )
 }
